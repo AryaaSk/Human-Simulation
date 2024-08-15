@@ -1,168 +1,150 @@
+const EVENT_LOGGING = true;
+
 interface Edge {
-    ID: string;
-    connectedToID: string; //ID of component which edge is connected to
-}
-const Edge = (ID: string, connectedToID: string): Edge => {
-    return { ID: ID, connectedToID: connectedToID };
-}
+    destinationID: string;
 
-
-interface ActionEvent {
-    type: string;
-    data: { [key: string] : any }
+    destinationType: "component" | "edge";
+    propogateUp: boolean;
 }
 
-interface BloodStore {
-    volume: number; //ml
-    oxygenConcentration: number; //0 to 1
-    carbonDioxideConcentration: number; //0 to 1
+interface EventData {
+    data: string;
+}
+
+class ComponentGraph {
+    edges: { [id: string]: Edge } = {};
+    components: { [id: string]: Component } = {};
+
+    graphAbove!: ComponentGraph;
+    componentAboveID: string;
+    constructor(componentAboveID: string, graphAbove?: ComponentGraph) {
+        this.componentAboveID = componentAboveID;
+        if (graphAbove != undefined) {
+            this.graphAbove = graphAbove;
+        }
+    }
+
+    TransmitEvent(data: EventData, toEdgeID: string, fromID: string) {
+        const edge = this.edges[toEdgeID];
+        if (EVENT_LOGGING == true) {
+            const propogatingDown = fromID == this.componentAboveID;
+
+            console.log(`${fromID} sending event to ${toEdgeID}`);
+            console.log(`${toEdgeID} sending event to ${edge.destinationID}${edge.propogateUp == true ? " (PROPOGATING UP)" : ""}${propogatingDown == true ? " (PROPOGATING DOWN)" : ""}`);
+        }
+
+        if (edge.destinationType == "component") {
+            const component = this.components[edge.destinationID];
+            component.EventIn(data, toEdgeID);
+        }
+        else { //destinationType == "edge"
+            //recursively call TransmitEvent on the current
+            //or graph above depending on if propogateUp is true
+            const nextEdgeID = edge.destinationID;
+            if (edge.propogateUp == false) {
+                this.TransmitEvent(data, nextEdgeID, toEdgeID);
+            }
+            else {
+                this.graphAbove.TransmitEvent(data, nextEdgeID, toEdgeID);
+            }
+        }
+    }
 }
 
 class Component {
-    ID: string = "";
-
-    bloodStore: BloodStore;
-
-    constructor () {
-        this.bloodStore = { volume: 0, oxygenConcentration: 0, carbonDioxideConcentration: 0 };
+    id: string;
+    constructor(id: string, graph: ComponentGraph) {
+        this.id = id;
+        this.graph = graph;
     }
 
-    async Action(event: ActionEvent) {
-        //method called whenever a possible trigger event occurs, e.g. blood flows in
-        if (event.type == "bloodIn") {
-            const newBlood = event.data as BloodStore;
-            const resultantBloodStore = CalculateResultantConcentration(this.bloodStore, newBlood);
-            this.bloodStore = resultantBloodStore;
-        }
+    substances: any;
+
+    private graph: ComponentGraph;
+    EventIn(data: EventData, fromEdgeID: string) {}
+    TransmitEvent(data: EventData, toEdgeID: string) {
+        this.graph.TransmitEvent(data, toEdgeID, this.id);
     }
 
-    async TransmitBlood() {
-        const transmitableBloodVolume = this.bloodStore.volume;
+    subComponents?: ComponentGraph;
+    subComponentsActivated: boolean = false;
 
-        //split blood equally across all connected components
-        const numberOfOutgoingNodes = CONNECTIONS[this.ID].length;
-        const bloodPortion = transmitableBloodVolume / numberOfOutgoingNodes;
 
-        const O2Conc = this.bloodStore.oxygenConcentration;
-        const CO2Conc = this.bloodStore.carbonDioxideConcentration;
 
-        for (const edge of CONNECTIONS[this.ID]) {
-            const recipientID = edge.connectedToID;
-
-            if (this.bloodStore.volume >= bloodPortion) {
-                this.bloodStore.volume -= bloodPortion;
-                COMPONENTS[recipientID].Action({ type: "bloodIn", data: { "volume": bloodPortion, "oxygenConcentration": O2Conc, "carbonDioxideConcentration": CO2Conc } });
-            }
-            else {
-                console.error(`${this.ID} trying to transmit ${bloodPortion} ml of blood, however it only contains ${this.bloodStore.volume} ml`);
-            }
-        }
-    }
+    
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+const Edge = (destinationID: string, destinationType?: "component" | "edge", propogateUp?: boolean): Edge => {
+    if (destinationType == undefined) { destinationType = "component" }; //defaults to component with no propagation
+    if (propogateUp == undefined) { propogateUp = false };
+    return { destinationID: destinationID, destinationType: destinationType , propogateUp: propogateUp };
+}
 
 class Heart extends Component {
-    constructor() {
-        super();
-        this.ID = "heart";
-    }
-
-    async Action(event: ActionEvent) {
-        await super.Action(event);
-
-        if (event.type == "beat") {
-            this.TransmitBlood(); //trigger a heartbeat
+    EventIn(data: EventData, fromEdgeID: string): void {
+        if (this.subComponentsActivated == false) { //heuristic
+            this.TransmitEvent(data, "aorta");
+        }
+        else { //propagate event down to sub-components;
+            //for a generic component, we need to verify subComponents exists
+            this.subComponents!.TransmitEvent(data, "pulmonaryVein", this.id)
         }
     }
 }
 
-class Lungs extends Component {
-    constructor() {
-        super();
-        this.ID = "lungs";
-    }
-
-    async Action(event: ActionEvent) {
-        await super.Action(event);
-
-        if (event.type == "bloodIn") { //after blood has entered, the lungs set O2 conc. to 1 and CO2. conc to 0.
-            this.bloodStore.oxygenConcentration = 1;
-            this.bloodStore.carbonDioxideConcentration = 0;
-
-            console.log("Oxygenated blood in lungs, now transmitting back to the heart.");
-
-            this.TransmitBlood(); //once oxygenated, the lungs simply re-transmit the blood outwards
+class LeftAtrium extends Component {
+    EventIn(data: EventData, fromEdgeID: string): void {
+        if (fromEdgeID == "pulmonaryVein") { //send blood along to left ventricle
+            this.TransmitEvent(data, "mitralValve");
         }
     }
 }
 
-class Body extends Component {
-    constructor() {
-        super();
-        this.ID = "body";
-    }
-
-    async Action(event: ActionEvent) {
-        await super.Action(event);
-
-        if (event.type == "bloodIn") {
-            this.bloodStore.oxygenConcentration = 0;
-            this.bloodStore.carbonDioxideConcentration = 1;
-
-            console.log("Used up oxygen in the rest of the body, sending blood back to heart.")
-
-            this.TransmitBlood();
+class LeftVentricle extends Component {
+    EventIn(data: EventData, fromEdgeID: string): void { //propagate event back up to heart's graph
+        if (fromEdgeID == "mitralValve") {
+            this.TransmitEvent(data, "aorta");
         }
     }
 }
 
+const body = new ComponentGraph(""); //nothing above
+body.components["heart"] = new Heart("heart", body);
+body.edges["pulmonaryVein"] = Edge("heart")
+body.edges["aorta"] = Edge("rest of body")
 
+const heart = body.components["heart"]; //this is a reference not copy
 
+const heartSubComponents = new ComponentGraph("heart", body)
 
+heartSubComponents.components["leftAtrium"] = new LeftAtrium("leftAtrium", heartSubComponents);
+heartSubComponents.components["leftVentricle"] = new LeftVentricle("leftVentricle", heartSubComponents);
 
+heartSubComponents.edges["pulmonaryVein"] = Edge("leftAtrium");
+heartSubComponents.edges["mitralValve"] = Edge("leftVentricle");
+//pointing to aorta within body's graph
+heartSubComponents.edges["aorta"] = { destinationID: "aorta", destinationType: "edge", propogateUp: true };
 
-const CONNECTIONS: { [ componentID: string ]: Edge[] } = {};
-CONNECTIONS["heart"] = [
-    Edge("pulmonaryArtery", "lungs"),
-    Edge("aorta", "body")
-];
+heart.subComponents = heartSubComponents;
+heart.subComponentsActivated = false;
 
-CONNECTIONS["lungs"] = [
-    Edge("pulmonaryVein", "heart")
-];
-
-CONNECTIONS["body"] = [
-    Edge("venaCava", "heart")
-];
-
-
-
-const COMPONENTS: { [componentID: string]: Component } = {};
-
-COMPONENTS["heart"] = new Heart();
-COMPONENTS["lungs"] = new Lungs();
-COMPONENTS["body"] = new Body();
-
-
-const OutputBloodStore = (id: string) => {
-    const bloodStore = COMPONENTS[id].bloodStore;
-    console.log(`${id} blood volume: ${bloodStore.volume}, O2 conc: ${bloodStore.oxygenConcentration}, CO2 conc: ${bloodStore.carbonDioxideConcentration}`);
+body.components["rest of body"] = new Component("rest of body", body);
+body.components["rest of body"].EventIn = (data, fromEdgeID) => {
+    console.log(data);
 }
 
-COMPONENTS["heart"].bloodStore.volume = 100;
-COMPONENTS["heart"].bloodStore.oxygenConcentration = 0;
-COMPONENTS["heart"].bloodStore.carbonDioxideConcentration = 1;
 
-OutputBloodStore("heart");
-OutputBloodStore("lungs");
-OutputBloodStore("body");
-
-COMPONENTS["heart"].TransmitBlood();
-OutputBloodStore("heart");
-OutputBloodStore("lungs");
-OutputBloodStore("body");
-
-
-
-
+body.TransmitEvent({ data: "blood" }, "pulmonaryVein", "Body");
