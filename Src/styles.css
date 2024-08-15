@@ -8,4 +8,18 @@ body {
     width: 400px;
 
     background-color: blue;
+
+    position: relative;
 }
+
+.component {
+    height: 9;
+    width: 0;
+
+    position: absolute;
+    left: 0; /* x */
+    bottom: 0; /* y */
+
+    background-color: white;
+}
+

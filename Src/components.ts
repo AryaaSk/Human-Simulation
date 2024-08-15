@@ -71,7 +71,10 @@ class Component {
 
 
 
-    
+    //UI attributes
+    position: Point = { x: 0, y: 0 }
+    dimensions: Dimensions = { height: 0, width: 0 };
+    colour: string = "white"
 }
 
 
@@ -148,3 +151,29 @@ body.components["rest of body"].EventIn = (data, fromEdgeID) => {
 
 
 body.TransmitEvent({ data: "blood" }, "pulmonaryVein", "Body");
+
+
+
+
+
+
+
+
+//Rendering; container has width 400px and height 700px
+heart.position = { x: 300, y: 400 };
+heart.dimensions = { height: 50, width: 50 };
+heart.colour = "red";
+
+heartSubComponents.components["leftAtrium"].position = { x: 310, y: 410 };
+heartSubComponents.components["leftAtrium"].dimensions = { width: 10, height: 10 }
+heartSubComponents.components["leftAtrium"].colour = "lime"
+
+heartSubComponents.components["leftVentricle"].position = { x: 330, y: 410 };
+heartSubComponents.components["leftVentricle"].dimensions = { width: 10, height: 10 }
+heartSubComponents.components["leftVentricle"].colour = "purple"
+
+heart.subComponentsActivated = true;
+
+RenderComponent(heart); //will recursively render sub-components
+
+
