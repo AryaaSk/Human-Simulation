@@ -1,4 +1,6 @@
 "use strict";
+const ORIGINAL_FRAME_DIMENSIONS = { height: 700, width: 400 };
+const CURRENT_FRAME = { centre: { x: 0, y: 0 }, scale: 1 };
 //create reference to container
 const container = document.getElementById("container");
 const RenderComponent = (component) => {

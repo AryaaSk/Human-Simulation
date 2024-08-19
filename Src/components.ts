@@ -159,18 +159,18 @@ body.TransmitEvent({ data: "blood" }, "pulmonaryVein", "Body");
 
 
 
-//Rendering; container has width 400px and height 700px
-heart.position = { x: 300, y: 400 };
+//Rendering; container has width 400px and height 700px, with (0, 0) being the center
+heart.position = { x: 100, y: 50 };
 heart.dimensions = { height: 50, width: 50 };
 heart.colour = "red";
 
-heartSubComponents.components["leftAtrium"].position = { x: 310, y: 410 };
-heartSubComponents.components["leftAtrium"].dimensions = { width: 10, height: 10 }
-heartSubComponents.components["leftAtrium"].colour = "lime"
+heartSubComponents.components["leftAtrium"].position = { x: 110, y: 60 };
+heartSubComponents.components["leftAtrium"].dimensions = { width: 10, height: 10 };
+heartSubComponents.components["leftAtrium"].colour = "lime";
 
-heartSubComponents.components["leftVentricle"].position = { x: 330, y: 410 };
-heartSubComponents.components["leftVentricle"].dimensions = { width: 10, height: 10 }
-heartSubComponents.components["leftVentricle"].colour = "purple"
+heartSubComponents.components["leftVentricle"].position = { x: 130, y: 60 };
+heartSubComponents.components["leftVentricle"].dimensions = { width: 10, height: 10 };
+heartSubComponents.components["leftVentricle"].colour = "purple";
 
 heart.subComponentsActivated = true;
 
