@@ -38,7 +38,7 @@ class ComponentGraph {
             component.EventIn(data, toEdgeID);
         }
         else { //destinationType == "edge"
-            //recursively call TransmitEvent on the current
+            //recursively call TransmitEvent on the current graph
             //or graph above depending on if propogateUp is true
             const nextEdgeID = edge.destinationID;
             if (edge.propogateUp == false) {
@@ -48,6 +48,15 @@ class ComponentGraph {
                 this.graphAbove.TransmitEvent(data, nextEdgeID, toEdgeID);
             }
         }
+    }
+
+
+
+    //Abstraction
+    AddComponent(id: string) {
+        const component = new Component(id, this);
+        this.components[id] = component;
+        return component;
     }
 }
 
@@ -125,35 +134,69 @@ class LeftVentricle extends Component {
 }
 
 const body = new ComponentGraph(""); //nothing above
-body.components["heart"] = new Heart("heart", body);
+//under a component graph, we need to define both the edges
+//and components between those edges
+
+//edges
 body.edges["pulmonaryVein"] = Edge("heart")
 body.edges["aorta"] = Edge("rest of body")
 
-const heart = body.components["heart"]; //this is a reference not copy
+//components
+const heart = body.AddComponent("heart");
+const restOfBody = body.AddComponent("rest of body");
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 const heartSubComponents = new ComponentGraph("heart", body)
+heart.subComponents = heartSubComponents;
 
-heartSubComponents.components["leftAtrium"] = new LeftAtrium("leftAtrium", heartSubComponents);
-heartSubComponents.components["leftVentricle"] = new LeftVentricle("leftVentricle", heartSubComponents);
-
+//edges
 heartSubComponents.edges["pulmonaryVein"] = Edge("leftAtrium");
 heartSubComponents.edges["mitralValve"] = Edge("leftVentricle");
-//pointing to aorta within body's graph
-heartSubComponents.edges["aorta"] = { destinationID: "aorta", destinationType: "edge", propogateUp: true };
+heartSubComponents.edges["aorta"] = { //pointing to aorta within body's graph
+    destinationID: "aorta",
+    destinationType: "edge",
+    propogateUp: true
+};
 
-heart.subComponents = heartSubComponents;
+//components
+heartSubComponents.components["leftAtrium"] = new Component("leftAtrium", heartSubComponents);
+heartSubComponents.components["leftVentricle"] = new Component("leftVentricle", heartSubComponents);
+
+
+
+
+
+
+
+
+
+
+
 heart.subComponentsActivated = false;
 
-body.components["rest of body"] = new Component("rest of body", body);
 body.components["rest of body"].EventIn = (data, fromEdgeID) => {
     console.log(data);
 }
 
 
 body.TransmitEvent({ data: "blood" }, "pulmonaryVein", "Body");
-
-
-
 
 
 
@@ -173,7 +216,5 @@ heartSubComponents.components["leftVentricle"].dimensions = { width: 10, height:
 heartSubComponents.components["leftVentricle"].colour = "purple";
 
 heart.subComponentsActivated = true;
-
-RenderComponent(heart); //will recursively render sub-components
 
 

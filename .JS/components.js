@@ -120,4 +120,3 @@ heartSubComponents.components["leftVentricle"].position = { x: 130, y: 60 };
 heartSubComponents.components["leftVentricle"].dimensions = { width: 10, height: 10 };
 heartSubComponents.components["leftVentricle"].colour = "purple";
 heart.subComponentsActivated = true;
-RenderComponent(heart); //will recursively render sub-components
