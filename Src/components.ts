@@ -1,14 +1,8 @@
 const EVENT_LOGGING = true;
 
-interface Edge {
-    destinationID: string;
-
-    destinationType: "component" | "edge";
-    propogateUp: boolean;
-}
-
 interface EventData {
-    data: string;
+    id: string;
+    data: { [key: string]: any };
 }
 
 class ComponentGraph {
@@ -58,6 +52,27 @@ class ComponentGraph {
         this.components[id] = component;
         return component;
     }
+
+    AddEdge(id: string) {
+        const edge = new Edge();
+        this.edges[id] = edge;
+        return edge;
+    }
+}
+
+class Edge {
+    destinationID!: string;
+    destinationType!: "component" | "edge";
+    propogateUp!: boolean;
+
+    Configure(destinationID: string, destinationType?: "component" | "edge", propogateUp?: boolean) {
+        if (destinationType == undefined) { destinationType = "component" }; //defaults to component with no propagation
+        if (propogateUp == undefined) { propogateUp = false };
+
+        this.destinationID = destinationID;
+        this.destinationType = destinationType;
+        this.propogateUp = propogateUp;
+    }
 }
 
 class Component {
@@ -70,14 +85,37 @@ class Component {
     substances: any;
 
     private graph: ComponentGraph;
-    EventIn(data: EventData, fromEdgeID: string) {}
-    TransmitEvent(data: EventData, toEdgeID: string) {
-        this.graph.TransmitEvent(data, toEdgeID, this.id);
+    EventIn(data: EventData, fromEdgeID: string) {
+        if (this.subComponentsActivated == true && this.subComponents != undefined) {
+            this.EventInNonHeuristic(data, fromEdgeID);
+        }
+        else {
+            this.EventInHeuristic(data, fromEdgeID);
+        }
+    }
+    EventInHeuristic(data: EventData, fromEdgeID: string) {}
+    EventInNonHeuristic(data: EventData, fromEdgeID: string) {}
+
+    TransmitEvent(data: EventData, toEdgeID: string, propogateDown?: boolean) {
+        if (propogateDown != true) {
+            this.graph.TransmitEvent(data, toEdgeID, this.id);
+        }
+        else {
+            this.subComponents!.TransmitEvent(data, toEdgeID, this.id);
+        }
     }
 
     subComponents?: ComponentGraph;
     subComponentsActivated: boolean = false;
 
+
+
+
+    //Abstraction
+    InitialiseSubComponents() {
+        const graph = new ComponentGraph(this.id, this.graph);
+        return graph;
+    }
 
 
     //UI attributes
@@ -98,105 +136,83 @@ class Component {
 
 
 
-
-const Edge = (destinationID: string, destinationType?: "component" | "edge", propogateUp?: boolean): Edge => {
-    if (destinationType == undefined) { destinationType = "component" }; //defaults to component with no propagation
-    if (propogateUp == undefined) { propogateUp = false };
-    return { destinationID: destinationID, destinationType: destinationType , propogateUp: propogateUp };
-}
-
-class Heart extends Component {
-    EventIn(data: EventData, fromEdgeID: string): void {
-        if (this.subComponentsActivated == false) { //heuristic
-            this.TransmitEvent(data, "aorta");
-        }
-        else { //propagate event down to sub-components;
-            //for a generic component, we need to verify subComponents exists
-            this.subComponents!.TransmitEvent(data, "pulmonaryVein", this.id)
-        }
-    }
-}
-
-class LeftAtrium extends Component {
-    EventIn(data: EventData, fromEdgeID: string): void {
-        if (fromEdgeID == "pulmonaryVein") { //send blood along to left ventricle
-            this.TransmitEvent(data, "mitralValve");
-        }
-    }
-}
-
-class LeftVentricle extends Component {
-    EventIn(data: EventData, fromEdgeID: string): void { //propagate event back up to heart's graph
-        if (fromEdgeID == "mitralValve") {
-            this.TransmitEvent(data, "aorta");
-        }
-    }
-}
-
-const body = new ComponentGraph(""); //nothing above
 //under a component graph, we need to define both the edges
 //and components between those edges
+const body = new ComponentGraph(""); //nothing above
 
 //edges
-body.edges["pulmonaryVein"] = Edge("heart")
-body.edges["aorta"] = Edge("rest of body")
+const pulmonaryVein = body.AddEdge("pulmonaryVein");
+pulmonaryVein.Configure("heart");
+const aorta = body.AddEdge("aorta");
+aorta.Configure("rest of body");
 
 //components
 const heart = body.AddComponent("heart");
-const restOfBody = body.AddComponent("rest of body");
+heart.EventInHeuristic = (data, fromEdgeID) => {
+    heart.TransmitEvent(data, "aorta");
+}
+heart.EventInNonHeuristic = (data, fromEdgeID) => {
+    //propagate event down to sub-components;
+    heart.TransmitEvent(data, "pulmonaryVein", true)
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-const heartSubComponents = new ComponentGraph("heart", body)
-heart.subComponents = heartSubComponents;
+const heartSubComponents = heart.InitialiseSubComponents();
 
 //edges
-heartSubComponents.edges["pulmonaryVein"] = Edge("leftAtrium");
-heartSubComponents.edges["mitralValve"] = Edge("leftVentricle");
-heartSubComponents.edges["aorta"] = { //pointing to aorta within body's graph
-    destinationID: "aorta",
-    destinationType: "edge",
-    propogateUp: true
-};
+const pulmonaryVeinInner = heartSubComponents.AddEdge("pulmonaryVein");
+pulmonaryVeinInner.Configure("leftAtrium");
+const mitralValve = heartSubComponents.AddEdge("mitralValve");
+mitralValve.Configure("leftVentricle");
+const aortaInner = heartSubComponents.AddEdge("aorta");
+aortaInner.Configure("aorta", "edge", true);
 
 //components
-heartSubComponents.components["leftAtrium"] = new Component("leftAtrium", heartSubComponents);
-heartSubComponents.components["leftVentricle"] = new Component("leftVentricle", heartSubComponents);
+const leftVentricle = heartSubComponents.AddComponent("leftAtrium");
+leftVentricle.EventInHeuristic = (data, fromEdgeID) => {
+    if (fromEdgeID == "pulmonaryVein") { //send blood along to left ventricle
+        leftVentricle.TransmitEvent(data, "mitralValve");
+    }
+}
+const leftAtrium = heartSubComponents.AddComponent("leftVentricle");
+leftAtrium.EventInHeuristic = (data, fromEdgeID) => {
+    if (fromEdgeID == "mitralValve") {
+        leftAtrium.TransmitEvent(data, "aorta");
+    }
+}
 
-
-
-
-
-
-
-
-
-
-
-heart.subComponentsActivated = false;
-
-body.components["rest of body"].EventIn = (data, fromEdgeID) => {
+const restOfBody = body.AddComponent("rest of body");
+restOfBody.EventInHeuristic = (data, fromEdgeID) => {
     console.log(data);
 }
 
 
-body.TransmitEvent({ data: "blood" }, "pulmonaryVein", "Body");
+
+
+//@ts-ignore
+const G = new ComponentGraph("[ID of component above]", GraphAbove);
+
+const edge1 = G.AddEdge("edge1");
+const edge2 = G.AddEdge("edge2");
+
+const component1 = G.AddComponent("component1");
+
+
+edge1.Configure("component1")
+edge2.Configure("edge in graph above", "edge", true)
+
+
+component1.EventInHeuristic = (data, fromEdgeID) => {
+    if (fromEdgeID == "edge1") {
+        component1.TransmitEvent(data, "edge2")
+    }
+}
+
+
+
+
+
+
+body.TransmitEvent({ id: "bloodIn", data: {} }, "pulmonaryVein", "Body");
 
 
 
