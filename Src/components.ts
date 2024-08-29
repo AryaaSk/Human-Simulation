@@ -188,29 +188,6 @@ restOfBody.EventInHeuristic = (data, fromEdgeID) => {
 
 
 
-//@ts-ignore
-const G = new ComponentGraph("[ID of component above]", GraphAbove);
-
-const edge1 = G.AddEdge("edge1");
-const edge2 = G.AddEdge("edge2");
-
-const component1 = G.AddComponent("component1");
-
-
-edge1.Configure("component1")
-edge2.Configure("edge in graph above", "edge", true)
-
-
-component1.EventInHeuristic = (data, fromEdgeID) => {
-    if (fromEdgeID == "edge1") {
-        component1.TransmitEvent(data, "edge2")
-    }
-}
-
-
-
-
-
 
 body.TransmitEvent({ id: "bloodIn", data: {} }, "pulmonaryVein", "Body");
 
