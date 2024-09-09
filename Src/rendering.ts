@@ -1,3 +1,5 @@
+//Rendering; container has width 400px and height 700px, with (0, 0) being the center
+
 interface Point {
     x: number;
     y: number;
@@ -46,32 +48,29 @@ const RenderComponent = (component: Component) => {
 
 
 const ORIGINAL_FRAME_DIMENSIONS: Dimensions = { height: 700, width: 400 };
-const CURRENT_FRAME: { centre: Point, scale: number } = { centre: { x: 125, y: 75 }, scale: 5 };
+const CURRENT_FRAME: { centre: Point, scale: number } = { centre: { x: 0, y: 0 }, scale: 1 };
 
-let MOUSE_DOWN = false;
-frame.onmousedown = () => {
-    MOUSE_DOWN = true;
-}
-frame.onmouseup = () => {
-    MOUSE_DOWN = false;
-}
-frame.onmousemove = ($e) => {
-    if (MOUSE_DOWN == false) {
-        return;
+const StartRendering = (RenderCallback: () => void) => {
+    let MOUSE_DOWN = false;
+    frame.onmousedown = () => {
+        MOUSE_DOWN = true;
     }
-    console.log('here')
-    CURRENT_FRAME.centre.x -= $e.movementX / CURRENT_FRAME.scale;
-    CURRENT_FRAME.centre.y += $e.movementY / CURRENT_FRAME.scale;
-    Render();
-}
+    frame.onmouseup = () => {
+        MOUSE_DOWN = false;
+    }
+    frame.onmousemove = ($e) => {
+        if (MOUSE_DOWN == false) {
+            return;
+        }
+        CURRENT_FRAME.centre.x -= $e.movementX / CURRENT_FRAME.scale;
+        CURRENT_FRAME.centre.y += $e.movementY / CURRENT_FRAME.scale;
+        RenderCallback();
+    }
 
-frame.onwheel = ($e) => {
-    CURRENT_FRAME.scale *= (1 + $e.deltaY / 1000);
-    Render();
-}
+    frame.onwheel = ($e) => {
+        CURRENT_FRAME.scale *= (1 + $e.deltaY / 1000);
+        RenderCallback();
+    }
 
-const Render = () => {
-    frame.innerHTML = "";
-    RenderComponent(heart); //will recursively render sub-components
+    RenderCallback(); //initial render
 }
-Render();

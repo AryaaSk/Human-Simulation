@@ -1,4 +1,5 @@
 "use strict";
+//Rendering; container has width 400px and height 700px, with (0, 0) being the center
 //create reference to container
 const frame = document.getElementById("container");
 const RenderComponent = (component) => {
@@ -25,29 +26,26 @@ const RenderComponent = (component) => {
     }
 };
 const ORIGINAL_FRAME_DIMENSIONS = { height: 700, width: 400 };
-const CURRENT_FRAME = { centre: { x: 125, y: 75 }, scale: 5 };
-let MOUSE_DOWN = false;
-frame.onmousedown = () => {
-    MOUSE_DOWN = true;
+const CURRENT_FRAME = { centre: { x: 0, y: 0 }, scale: 1 };
+const StartRendering = (RenderCallback) => {
+    let MOUSE_DOWN = false;
+    frame.onmousedown = () => {
+        MOUSE_DOWN = true;
+    };
+    frame.onmouseup = () => {
+        MOUSE_DOWN = false;
+    };
+    frame.onmousemove = ($e) => {
+        if (MOUSE_DOWN == false) {
+            return;
+        }
+        CURRENT_FRAME.centre.x -= $e.movementX / CURRENT_FRAME.scale;
+        CURRENT_FRAME.centre.y += $e.movementY / CURRENT_FRAME.scale;
+        RenderCallback();
+    };
+    frame.onwheel = ($e) => {
+        CURRENT_FRAME.scale *= (1 + $e.deltaY / 1000);
+        RenderCallback();
+    };
+    RenderCallback(); //initial render
 };
-frame.onmouseup = () => {
-    MOUSE_DOWN = false;
-};
-frame.onmousemove = ($e) => {
-    if (MOUSE_DOWN == false) {
-        return;
-    }
-    console.log('here');
-    CURRENT_FRAME.centre.x -= $e.movementX / CURRENT_FRAME.scale;
-    CURRENT_FRAME.centre.y += $e.movementY / CURRENT_FRAME.scale;
-    Render();
-};
-frame.onwheel = ($e) => {
-    CURRENT_FRAME.scale *= (1 + $e.deltaY / 1000);
-    Render();
-};
-const Render = () => {
-    frame.innerHTML = "";
-    RenderComponent(heart); //will recursively render sub-components
-};
-Render();

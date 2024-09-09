@@ -70,9 +70,7 @@ class Component {
         this.id = id;
         this.graph = graph;
     }
-    substances = {
-        "blood": BloodStore(0, 0, 0)
-    };
+    substances;
     graph;
     EventIn(data, fromEdgeID) {
         if (this.subComponentsActivated == true && this.subComponents != undefined) {
@@ -101,7 +99,64 @@ class Component {
         return graph;
     }
     //UI attributes
-    position = { x: 0, y: 0 }; //position of bottom-left corner relative to center of frame
+    position = { x: 0, y: 0 };
     dimensions = { height: 0, width: 0 };
     colour = "white";
 }
+//under a component graph, we need to define both the edges
+//and components between those edges
+const body = new ComponentGraph(""); //nothing above
+//edges
+const pulmonaryVein = body.AddEdge("pulmonaryVein");
+pulmonaryVein.Configure("heart");
+const aorta = body.AddEdge("aorta");
+aorta.Configure("rest of body");
+//components
+const heart = body.AddComponent("heart");
+heart.EventInHeuristic = (data, fromEdgeID) => {
+    heart.TransmitEvent(data, "aorta");
+};
+heart.EventInNonHeuristic = (data, fromEdgeID) => {
+    //propagate event down to sub-components;
+    heart.TransmitEvent(data, "pulmonaryVein", true);
+};
+heart.position = { x: 100, y: 50 };
+heart.dimensions = { height: 50, width: 50 };
+heart.colour = "red";
+const heartSubComponents = heart.InitialiseSubComponents();
+//edges
+const pulmonaryVeinInner = heartSubComponents.AddEdge("pulmonaryVein");
+pulmonaryVeinInner.Configure("leftAtrium");
+const mitralValve = heartSubComponents.AddEdge("mitralValve");
+mitralValve.Configure("leftVentricle");
+const aortaInner = heartSubComponents.AddEdge("aorta");
+aortaInner.Configure("aorta", "edge", true);
+//components
+const leftVentricle = heartSubComponents.AddComponent("leftAtrium");
+leftVentricle.EventInHeuristic = (data, fromEdgeID) => {
+    if (fromEdgeID == "pulmonaryVein") { //send blood along to left ventricle
+        leftVentricle.TransmitEvent(data, "mitralValve");
+    }
+};
+leftVentricle.position = { x: 130, y: 60 };
+leftVentricle.dimensions = { width: 10, height: 10 };
+leftVentricle.colour = "purple";
+const leftAtrium = heartSubComponents.AddComponent("leftVentricle");
+leftAtrium.EventInHeuristic = (data, fromEdgeID) => {
+    if (fromEdgeID == "mitralValve") {
+        leftAtrium.TransmitEvent(data, "aorta");
+    }
+};
+leftAtrium.position = { x: 110, y: 60 };
+leftAtrium.dimensions = { width: 10, height: 10 };
+leftAtrium.colour = "lime";
+const restOfBody = body.AddComponent("rest of body");
+restOfBody.EventInHeuristic = (data, fromEdgeID) => {
+    console.log(data);
+};
+heart.subComponentsActivated = true;
+const Render = () => {
+    frame.innerHTML = "";
+    RenderComponent(heart); //will recursively render sub-components
+};
+body.TransmitEvent({ id: "bloodIn", data: {} }, "pulmonaryVein", "Body");

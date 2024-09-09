@@ -1,4 +1,7 @@
 "use strict";
+const BloodStore = (volume, oxygenConcentration, carbonDioxideConcentration) => {
+    return { volume: volume, oxygenConcentration: oxygenConcentration, carbonDioxideConcentration: carbonDioxideConcentration };
+};
 const CalculateResultantConcentration = (bloodStore1, bloodStore2) => {
     const vt = bloodStore1.volume + bloodStore2.volume;
     //calculate resultant oxygen and carbon dioxide concentrations

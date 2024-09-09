@@ -4,6 +4,9 @@ interface BloodStore {
     carbonDioxideConcentration: number; //0 to 1
 }
 
+const BloodStore = (volume: number, oxygenConcentration: number, carbonDioxideConcentration: number): BloodStore => {
+    return { volume: volume, oxygenConcentration: oxygenConcentration, carbonDioxideConcentration: carbonDioxideConcentration };
+}
 
 const CalculateResultantConcentration = (bloodStore1: BloodStore, bloodStore2: BloodStore): BloodStore => {
     const vt = bloodStore1.volume + bloodStore2.volume;
